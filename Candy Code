@@ -1,0 +1,438 @@
+# load the project support code
+include shared-gdrive(
+  "table-functions.arr",
+  "14jG4wvAMhjJue1-EmY-u9hX4UwmPHCO8")
+
+include shared-gdrive(
+  "project-2-support.arr",
+  "1N1pwFonshMA_CH99wH00h0HuuiXRja9A")
+
+include image
+include tables
+include reactors
+import lists as L
+
+##################################
+# CONSTANTS 1
+##################################
+ssid = "1MLmUAqcV6q7NO1w_MY0jxoCKKlaAj_1actL7R3UTlss"
+maze-data = load-maze(ssid) 
+tile-size = 30
+path = load-texture("tile.png")
+wall = load-texture("walls.png") 
+reference = maze-data.first.length()
+reference2 = maze-data.length()
+
+
+
+##################################
+# DATA TYPES
+##################################
+data Coord:
+  | coord(x :: Number, y :: Number)
+end
+#Coordinate Data type Examples:
+coord(10,10)
+coord(0,0)
+coord(-5,10)
+
+data Player:
+  | player(pos :: Coord, direction :: Image)
+end
+#Player examples
+player(coord(2,-5),load-texture("doug-up.png"))
+player(coord(0,0),load-texture("doug-down.png"))
+
+
+data Item:
+  | item(pos :: Coord, kind :: Image)
+end
+#itm examples
+item(coord(3,2), load-texture("walls.png"))
+item(coord(10,10), load-texture("snickers.png"))
+
+ data GameState:
+  | state(player :: Player, item :: List<Item>, stamina :: Number)
+end
+
+#GameState datatype examples 
+
+state(player(coord(2,0),load-texture("doug-down.png")), [list: item(coord(-3,2), 
+      load-texture("snickers.png"))],66)
+state(player(coord(1,1), load-texture("doug-up.png")), [list: item(coord(12,1),
+      load-texture("candy-cane.png")), item(coord(-3,2), 
+      load-texture("snickers.png"))], -7)
+
+##################################
+# FUNCTIONS RELATED TO CONSTANTS
+##################################
+fun draw-row(l :: List, y :: Number, b :: Image) -> Image:
+  doc: ``` Takes in a list of strings, a number and an image for the background and 
+       creates a row of tiles, at the y-value inputted, onto the image inputted, 
+       corresponding to the strings of the lists.```
+  cases (List) l:
+    | empty => b
+    | link(f, r) => 
+      if (f == "x"):
+        temp = place-image-align(wall, tile-size * 
+          ((reference - r.length()) - 1), y,"left", "top",b)
+        draw-row(r,y,temp)     
+      else: 
+        temp = place-image-align(path, tile-size * (reference - r.length() - 1), 
+          y,"left", "top",b)
+        draw-row(r,y,temp)
+      end
+  end
+end
+
+
+fun draw-maze-base(l :: List, b :: Image) -> Image:
+  doc: ```Takes in a list of lists (our maze-data) and a background image,
+ and outputs an image of the maze layout. ```
+cases (List) l:
+    | empty => b
+    | link(f, r) => 
+      y = tile-size * (reference2 - r.length() - 1)
+      draw-maze-base(r,draw-row(f, y, b))
+end
+end
+#example tables to test next function
+examp-table = table: name :: String, x :: Number, y :: Number, url :: String
+    row: "snicker", 4, 5, "snickers.png"
+  row: "cHoc", 4, 0, "candy-cane.png"
+  row:  "yumy1um", 89, -4 , "door.png"
+  row: "heat!food", 44, 89, "twizzlers.png"
+  end
+
+examp-table2 = table: name :: String, x :: Number, y :: Number, url :: String
+  row: "", 0, 0 , "snickers.png"
+ 
+  end
+
+fun standardize-items(t :: Table) -> List<Item>:
+  doc: ``` Inputs a table of all gadgets in table and outputs them as a list ```
+  
+  list1 = t.get-column("x")
+  list2 = t.get-column("y")
+  list3 = t.get-column("url")
+  
+  fun to-coord(n1 :: Number, n2 :: Number) -> Coord:
+    doc: ```converts the coordinate numbers to a new coordinates based on the new 
+         scale of tiles ```
+    coord(n1 * tile-size,n2 * tile-size)
+  end
+ 
+  
+  fun to-item-list(l1 :: List, l2 :: List, l3 :: List) -> List<Item>:
+    doc: ``` joins all 3 lists (x coord, y coord and image url) from our gadgets 
+         table data to create a list of items (with their coordinates and images)```
+    cases (List) l1:
+    | empty => empty
+    | link(f1, r1) => 
+        cases (List) l2:
+          | empty => empty
+          | link(f2, r2) => 
+            cases (List) l3:
+              | empty => empty
+              | link(f3, r3) => link(item(to-coord(f1,f2),load-texture(f3)),
+                  to-item-list(r1,r2,r3))
+            end
+        end
+    end
+  end
+  to-item-list(list1,list2,list3)
+where:
+  
+  standardize-items(examp-table) is [list: item(coord(120, 150), load-texture("snickers.png")),
+    item(coord(120, 0), load-texture("candy-cane.png")), item(coord(2670, -120),
+      load-texture("door.png")), item(coord(1320, 2670), load-texture("twizzlers.png"))]
+  
+  standardize-items(examp-table2) is [list: item(coord(0,0), load-texture("snickers.png"))]
+  
+end
+
+##################################
+# CONSTANTS 2
+##################################
+SPEED = tile-size
+start-stamina = 100
+stamina-loss = 2
+doug-up = load-texture("doug-up.png")
+doug-down = load-texture("doug-down.png")
+doug-right = load-texture("doug-right.png")
+doug-left = load-texture("doug-left.png")
+snickers = load-texture("snickers.png")
+candy-cane = load-texture("candy-cane.png")
+twizzler = load-texture("twizzlers.png")
+door = load-texture("door.png")
+item-data = standardize-items(load-items(ssid))
+start-state = state(player(coord(30,30),doug-down),item-data,start-stamina)
+background = empty-scene(tile-size * maze-data.get(0).length(), tile-size * maze-data.length())
+template = draw-maze-base(maze-data,background)
+
+##################################
+# Functions
+##################################
+fun coord-to-tile(n :: Number) -> Number:
+  doc: ```converts the coordinate numerical value to tile scale```
+  num-round(n / tile-size)
+where:
+  coord-to-tile(0) is 0
+  coord-to-tile(1000) is 33
+  coord-to-tile(-500) is -17
+  coord-to-tile(56 * tile-size) is 56
+end
+
+
+#example list of lists
+examplist = [list: [list:"","o", "o", "", "x"], [list: ""], [list: "o", "x"]]
+examplist2 = [list: [list: ""], [list:""]]
+examplist3 = [list: ""]
+
+
+fun check-wall(pos :: Coord, key :: String, l :: List<List<String>>) -> Boolean: 
+  doc: ```checks if a wall is on the coordinate that player presses a key to move into```
+  x = coord-to-tile(pos.x)
+  y = coord-to-tile(pos.y)
+  
+  if (key == "a"): 
+    get-item(l, x - 1, y) == "o"
+  else if (key == "d"): 
+      get-item(l, x + 1, y) == "o"
+  else if (key == "w"): 
+        get-item(l, x, y - 1) == "o"
+  else if (key == "s"): 
+          get-item(l, x, y + 1) == "o"
+   else: true
+  end
+where:
+  check-wall(coord(20,30), "w", examplist) is true
+  check-wall(coord(25,35), "a", examplist2) is false
+ end
+
+
+
+fun key-pressed(g :: GameState, key :: String) -> GameState:
+  doc:``` Moves the player and depletes stamina if the player presses one of WASD keys and 
+      a wall is not on the coordinate that the player is moving into. 
+      Rotates doug face accordingly ```
+  
+  c = g.player.pos
+if (key == "a") and check-wall(c,"a",maze-data):
+    x = state(player(coord(c.x - SPEED, c.y),doug-left), g.item, g.stamina - stamina-loss)
+    update-state(x)
+else if (key == "d") and check-wall(c,"d",maze-data):
+    x = state(player(coord(c.x + SPEED, c.y),doug-right), g.item, g.stamina - stamina-loss)
+    update-state(x)
+else if (key == "w") and check-wall(c,"w",maze-data):
+    x = state(player(coord(c.x, c.y - SPEED),doug-up), g.item, g.stamina - stamina-loss)
+    update-state(x)
+else if (key == "s") and check-wall(c,"s",maze-data): 
+    x = state(player(coord(c.x, c.y + SPEED),doug-down), g.item, g.stamina - stamina-loss)
+    update-state(x)
+  else:
+g
+  end
+where:
+  key-pressed(state(player(coord(1 * tile-size, 1 * tile-size),load-texture("doug-down.png")), 
+      [list: item(coord(2,0),  load-texture("snickers.png"))],50), "d") is
+  state(player(coord(2 * tile-size, 1 * tile-size), load-texture("doug-right.png")), 
+    [list: item(coord(2, 0),  load-texture("snickers.png"))], 50 - stamina-loss)
+  
+  key-pressed(state(player(coord(33 * tile-size, 14 * tile-size),load-texture("doug-down.png")),
+      [list: item(coord(2,0),  load-texture("snickers.png"))],50), "w") is
+  state(player(coord(33 * tile-size , 14 * tile-size),
+      load-texture("doug-down.png")), [list: item(coord(2,0), 
+        load-texture("snickers.png"))],50)
+
+ 
+end
+
+
+fun draw-items(l :: List<Item>, b :: Image) -> Image:
+  doc: ``` inputs list of items and maze, and outputs new image with items placed```
+   cases (List) l:
+    | empty => b
+    | link(f, r) => 
+      place-image-align(f.kind, f.pos.x, f.pos.y,"left", "top",draw-items(r,b))   
+  end
+end
+
+
+fun update-items(l :: List<Item>, p :: Player) -> List<Item>:
+  doc: ```Updates item list when player reaches it's coordinate and consumes it```
+  cases (List) l:
+    | empty => l
+    | link(f, r) => 
+      if (f.pos == p.pos):
+        update-items(r,p)
+      else:
+        link(f,update-items(r,p))
+      end
+  end
+where:
+  update-items([list: item(coord(5,5), load-texture("snickers.png"))], player(coord(5, 5), 
+      load-texture("doug-up.png"))) is [list: ] #there is a match so item deletes
+  
+  update-items([list: item(coord(0,5), load-texture("snickers.png"))],
+    player(coord(5, 5), load-texture("doug-up.png"))) is [list: item(coord(0,5),
+        load-texture("snickers.png"))] #no delete since no match between player and item coord
+end
+
+
+
+fun find-item(g :: GameState) -> Image:
+  doc: ``` updates item from image  when player reaches coordinate of an item, therby consuming it 
+       and removing it from the item list. This creates a new image without consumed item```
+  l = g.item 
+  p = g.player
+  output = filter(lam(i): (p.pos.x == i.pos.x) and (p.pos.y == i.pos.y)end,l)
+  cases (List) output:
+    | empty => square(30,"solid","blue")
+    | link(f, r) => 
+      f.kind
+  end
+end
+
+
+
+fun update-state(g :: GameState) -> GameState:
+  doc: ``` Updates gamestate with changes in players stamina depending on the item consumed ```
+  l = g.item
+  p = g.player
+  if find-item(g) == snickers:
+    state(p,update-items(l,p),start-stamina)
+  else if find-item(g) == candy-cane:
+    state(p,update-items(l,p),g.stamina + 20)
+  else if find-item(g) == twizzler:
+    if g.stamina >= 20:
+      state(p,update-items(l,p),20)
+    else:
+      state(p,update-items(l,p),-100000)
+      #Code that allows the game to end if the stamina is under the set value
+    end
+  else:
+    g
+  end
+where:
+  #|snickers make ur health the starting health no matter what youre at |#
+  update-state(state(player(coord(2,0),load-texture("doug-down.png")), [list: item(coord(2,0), 
+          load-texture("snickers.png"))],0)) is state(player(coord(2,0),
+      load-texture("doug-down.png")), [list: ], 100)
+  
+  update-state(state(player(coord(2,0),load-texture("doug-down.png")), [list: item(coord(2,0), 
+          load-texture("snickers.png"))], 44)) is state(player(coord(2,0),
+      load-texture("doug-down.png")), [list: ], 100)
+  #Candy cane increase stamina by 20 no matter where youre at
+  
+  update-state(state(player(coord(8,8),load-texture("doug-down.png")), [list: item(coord(8,8), 
+          load-texture("candy-cane.png"))],0)) is state(player(coord(8,8),
+      load-texture("doug-down.png")), [list: ], 20)
+  
+   update-state(state(player(coord(8,8),load-texture("doug-down.png")), [list: item(coord(8,8), 
+          load-texture("candy-cane.png"))],24)) is state(player(coord(8,8),
+      load-texture("doug-down.png")), [list: ], 44)
+  
+  #twizzlers sets your health to 20 if its above 20,  kills you otherwise
+  update-state(state(player(coord(2,0),load-texture("doug-down.png")), [list: item(coord(2,0), 
+          load-texture("twizzlers.png"))], 35)) is state(player(coord(2,0),
+      load-texture("doug-down.png")), [list: ], 20)
+  
+    update-state(state(player(coord(2,0),load-texture("doug-down.png")), [list: item(coord(2,0), 
+          load-texture("twizzlers.png"))], 19)) is state(player(coord(2,0),
+      load-texture("doug-down.png")), [list: ], -100000)
+  
+ 
+  #when doug isnt at the food, stamina doesnt change and the food isnt dropped from list of items
+  update-state(state(player(coord(0,0),load-texture("doug-down.png")), [list: item(coord(34,14), 
+          load-texture("snickers.png"))],44)) is state(player(coord(0,0),
+      load-texture("doug-down.png")), [list: item(coord(34,14), 
+        load-texture("snickers.png")) ], 44)
+  
+end
+   
+ 
+    
+    
+fun draw-doug(p :: Player,b :: Image) -> Image:
+  doc: ```Generates and places doug's image in the inital starting point```
+  place-image-align(p.direction, p.pos.x, p.pos.y,"left", "top",b)
+end
+
+fun draw-stamina(s :: Number,i :: Image) -> Image:
+  doc:```Draws a blue rectangle stamina bar on the right hand side```
+  if (s > 0):
+    stamina = rectangle(tile-size, (s / start-stamina) * (reference2 * tile-size) , 
+      "solid", "blue")
+  beside-align("bottom",i,stamina)
+  else:
+    i
+  end
+end
+
+
+fun get-item(l :: List<List<String>>, x :: Number, y :: Number) -> String:
+  doc:```Takes in a List of Lists, and get the xth element from the yth list. 
+  ```
+  list-y = l.get(y)
+  list-y.get(x)
+where:
+  #testing lists with empty lists and nonempty lists, list of empty lists, and the empty list,
+  get-item(examplist, 2, 0) is "o"
+  get-item(examplist2, 0, 1) is ""
+  get-item([list:[list:"x", "y", "z"], [list:"1", "2", "3"], [list:"a", "b", "c"]], 2, 1) is "3"
+get-item([list:[list:""], [list:""], [list:"a", "b", "c"]], 0, 1) is ""
+get-item([list:[list:""]], 0, 0) is ""
+end
+
+fun animate(g :: GameState) -> Image:
+  doc: ```Changes image based on the gamestate```
+  t1 = draw-items(g.item,template)
+  l = g.item
+  p = g.player
+  temp = draw-doug(g.player,t1)
+  draw-stamina(g.stamina,temp)
+  
+end
+
+
+fun game-complete(g :: GameState) -> Boolean: 
+  doc: ```Ends the game if the player's game state has coordinates equal to the end of the maze, 
+       or if the player runs out of stamina```
+  pos = g.player.pos
+  c1 = coord-to-tile(pos.x)
+  c2 = coord-to-tile(pos.y) 
+    ((c1 == 34) and (c2 == 14)) or (g.stamina <= 0) 
+where:
+  # Will test all 4 combinations of having/not having stamina, and being/not being at the end
+  game-complete(state(player(coord(34 * tile-size,14 * tile-size),load-texture("doug-down.png")), 
+      [list: item(coord(-3,2), load-texture("snickers.png"))],66)) is true
+  game-complete(state(player(coord(0,0),load-texture("doug-down.png")), 
+      [list: item(coord(-3,2), load-texture("snickers.png"))],66)) is false
+  game-complete(state(player(coord(0,0),load-texture("doug-down.png")),
+      [list: item(coord(-3,2), load-texture("snickers.png"))],0)) is true
+  game-complete(state(player(coord(34 * tile-size,14 * tile-size),
+        load-texture("doug-down.png")), [list: item(coord(-3,2), 
+          load-texture("snickers.png"))],0)) is true
+end
+
+
+
+
+maze-game =
+  reactor:
+    init              : start-state,
+    to-draw           : animate,
+    on-key            : key-pressed,
+    stop-when         : game-complete, # [up to you]
+    close-when-stop   : true,
+    title             : "Captured by Candy!"
+  end 
+
+
+
+# Play Game
+interact(maze-game)
+
+
+
